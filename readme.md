@@ -62,6 +62,10 @@ By combining general Python programming with hands-on practice using NumPy, Pand
 - Working with modules and packages: importing, creating custom modules
 - Overview of the broader Python ecosystem for data science
 
+### Workshop notes
+
+Detailed guidance notes for each workshop session can be found [here](https://github.com/mark-andrews/prstats-pyds01).
+
 ### Format
 
 - 2 days, 6 sessions (2 hours each)
