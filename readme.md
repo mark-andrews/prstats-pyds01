@@ -64,7 +64,7 @@ By combining general Python programming with hands-on practice using NumPy, Pand
 
 ### Workshop notes
 
-Detailed guidance notes for each workshop session can be found [here](https://github.com/mark-andrews/prstats-pyds01).
+Detailed guidance notes for each workshop session can be found [here](https://mark-andrews.github.io/prstats-pyds01/).
 
 ### Format
 
