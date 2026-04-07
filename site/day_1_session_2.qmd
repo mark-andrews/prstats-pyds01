@@ -1,0 +1,727 @@
+---
+title: "Day One, Session Two"
+subtitle: "Collections"
+author: "Mark Andrews"
+date: today
+date-format: "D MMMM, YYYY"
+format:
+  html:
+    css: styles.css
+abstract: |
+  This session covers Python's built-in collection types.
+  We work through lists, dictionaries, tuples, and sets, examining how each is created, how its elements are accessed and modified, and what operations and methods apply to it.
+  The session closes with an overview of type conversion between collection types.
+---
+
+```{python}
+#| include: false
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "last_expr"
+```
+
+## Collection Types
+
+In the previous session we covered Python's scalar types: integers, floats, Booleans, and strings.
+Each holds a single value.
+Python also provides a set of built-in types designed to hold multiple objects.
+These are called collection types, and they are among the most heavily used structures in the language.
+
+There are four main collection types that are built into Python:
+
+- A *list* is an ordered sequence of objects, indexed by position.
+- A *dictionary* maps keys to values, so elements are looked up by a name or identifier rather than by position.
+- A *tuple* is an ordered sequence, like a list, but immutable: once created, it cannot be changed.
+- A *set* is an unordered collection of unique objects, corresponding closely to the mathematical notion of a set.
+
+Lists and dictionaries are the two types you will encounter most often.
+Tuples are also common, particularly when a function needs to return more than one value.
+Sets are less frequently used but useful when uniqueness matters or when you need standard set operations.
+
+This session works through each type in turn.
+
+## Lists
+
+A list is an ordered sequence of objects, created using square brackets with elements separated by commas.
+
+```{python}
+numbers = [1, 2, 3, 4, 5]
+mixed = [1, "hello", 3.14, True, None]
+empty = []
+```
+
+No output is produced because these are binding operations.
+`numbers` holds five integers.
+`mixed` holds five objects, each of a different type: an integer, a string, a float, a Boolean, and `None`.
+`empty` is an empty list with zero elements.
+
+```{python}
+mixed
+```
+
+This ability to hold objects of any type in the same list is a defining characteristic of Python lists.
+
+Because a list is a sequence, its elements can be accessed by position using the same indexing rules introduced for strings in the previous session.
+
+```{python}
+primes = [2, 3, 5, 7, 11, 13, 17]
+```
+
+```{python}
+#| eval: false
+primes[0]   # first element
+primes[-1]  # last element
+primes[2]   # third element
+primes[-2]  # second to last
+```
+
+Slicing extracts a contiguous subsequence of elements using the notation `start:stop`.
+The key to understanding slicing is that these numbers refer to boundary positions between elements, not to the elements themselves.
+Think of a list as having fence posts numbered from 0, with the elements sitting between the posts.
+`primes` has seven elements and therefore eight fence posts, numbered 0 through 7.
+A slice `[start:stop]` selects everything between fence post `start` and fence post `stop`.
+So `primes[1:4]` takes everything between post 1 and post 4, which is three elements: the ones at positions 1, 2, and 3.
+Post 4 is a boundary marker, not something that gets included.
+
+```{python}
+primes[1:4]   # between posts 1 and 4: elements at positions 1, 2, 3
+```
+
+When `start` is omitted it defaults to 0, the beginning of the list.
+`primes[:3]` is therefore identical to `primes[0:3]`.
+
+```{python}
+primes[:3]    # same as primes[0:3]: everything before post 3
+```
+
+When `stop` is omitted it defaults to the end of the list.
+
+```{python}
+primes[2:]    # from post 2 to the end: all elements from position 2 onwards
+```
+
+A third component, the step, extends the notation to `start:stop:step` and controls how many positions to advance between selected elements.
+
+```{python}
+primes[::2]   # from start to end, taking every 2nd element
+```
+
+```{python}
+primes[::-1]  # from end to start, step -1: reverses the list
+```
+
+```{python}
+primes[1:4:2] # between posts 1 and 4, step 2: elements at positions 1 and 3
+```
+
+A list can contain other lists as elements.
+The example below is a ragged structure where the inner lists have different lengths.
+
+```{python}
+ragged = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
+```
+
+Indexing the outer list returns one of the inner lists.
+
+```{python}
+ragged[0]   # first inner list
+```
+
+```{python}
+ragged[1]   # second inner list
+```
+
+```{python}
+ragged[2]   # third inner list
+```
+
+To reach an element within an inner list, apply a second index immediately after the first.
+
+```{python}
+ragged[0][2]   # third element of the first inner list
+```
+
+```{python}
+ragged[2][-1]  # last element of the third inner list
+```
+
+It is worth noting here that numerical array data in scientific Python is handled by NumPy, not by nested lists.
+The list-of-lists pattern is useful for other kinds of nested or irregular data, but we will not be using it for numerical work.
+
+Several operators apply to lists.
+`+` concatenates two lists and `*` repeats a list a given number of times.
+
+```{python}
+[1, 2, 3] + [4, 5, 6]
+```
+
+```{python}
+[0] * 5
+```
+
+The `in` and `not in` operators test for membership, as they do with strings.
+
+```{python}
+#| eval: false
+7 in primes        # True
+100 in primes      # False
+100 not in primes  # True
+```
+
+At this point it is worth revisiting Python's object model to make an important point about lists and name binding.
+When you write `y = x`, you are not copying the list.
+You are binding a second name to the same object.
+Any modification made through either name affects the single underlying list.
+
+```{python}
+x = [1, 2, 3]
+y = x
+y.append(4)
+x
+```
+
+`x` now shows four elements even though `append` was called on `y`.
+Both names refer to the same object, so the change is visible through both.
+To create an independent copy, write `y = x.copy()` or `y = list(x)`.
+
+Several built-in functions work with lists.
+
+```{python}
+#| eval: false
+len(primes)   # number of elements
+sum(primes)   # sum of all elements
+min(primes)   # smallest element
+max(primes)   # largest element
+```
+
+The `sorted` function returns a new sorted list and leaves the original unchanged.
+This is worth noting now because it contrasts with the `.sort()` method introduced below.
+
+```{python}
+sorted(primes)
+```
+
+```{python}
+sorted(primes, reverse=True)
+```
+
+```{python}
+primes   # sorted() did not modify primes
+```
+
+Lists have a substantial set of methods.
+As introduced in the previous session, methods are functions attached to an object and called using dot notation.
+Most list methods modify the list in place and return `None`.
+
+`append` adds a single element to the end of the list.
+
+```{python}
+primes = [2, 3, 5, 7, 11, 13, 17]
+primes.append(19)
+primes
+```
+
+`extend` adds all elements from another sequence to the end of the list.
+
+```{python}
+primes.extend([23, 29])
+primes
+```
+
+`insert` places an element at a specified position, shifting everything to the right.
+
+```{python}
+primes.insert(0, 1)
+primes
+```
+
+`pop` removes and returns the element at a given index.
+With no argument it removes the last element.
+
+```{python}
+primes.pop()
+```
+
+`remove` removes the first occurrence of a given value from the list.
+
+```{python}
+primes = [2, 3, 5, 7, 11, 13, 17]
+primes.remove(5)
+primes
+```
+
+`del` is a statement rather than a method, but it serves the same purpose of removing elements.
+It removes the element at a given index, or all elements in a given slice.
+
+```{python}
+del primes[0]
+primes
+```
+
+The `.sort()` method sorts the list in place.
+Unlike `sorted`, it modifies the list directly and returns `None`.
+
+```{python}
+values = [3, 1, 4, 1, 5, 9, 2, 6]
+values.sort()
+values
+```
+
+```{python}
+values.sort(reverse=True)
+values
+```
+
+`.reverse()` reverses the list in place.
+
+```{python}
+values.reverse()
+values
+```
+
+`count` returns the number of times a given value appears in the list.
+
+```{python}
+data = [1, 2, 2, 3, 3, 3, 4]
+data.count(3)
+```
+
+`index` returns the position of the first occurrence of a given value.
+
+```{python}
+data.index(3)
+```
+
+## Dictionaries
+
+A dictionary is a collection of key-value pairs.
+Where a list is indexed by position, a dictionary is indexed by key, making it the natural structure whenever you want to associate labels or identifiers with values.
+Think of it as a lookup table.
+
+The standard way to create a dictionary is with curly braces, listing key-value pairs separated by colons.
+
+```{python}
+person = {"name": "Alice", "age": 30, "city": "Boston"}
+```
+
+Each key must be an immutable object.
+Strings are by far the most common choice, though integers and other immutable types are also valid.
+A list cannot be a key because lists are mutable.
+Values, by contrast, can be any Python object.
+
+A second common creation pattern uses the `dict` constructor with keyword arguments.
+
+```{python}
+#| eval: false
+dict(name="Alice", age=30, city="Boston")
+```
+
+There are other ways to construct dictionaries, but these two cover the great majority of cases.
+Python 3.7 and later guarantees that dictionaries maintain insertion order.
+
+Values are retrieved using square brackets with the key.
+
+```{python}
+person["name"]
+```
+
+```{python}
+person["age"]
+```
+
+Using a key that does not exist raises a `KeyError`.
+
+```{python}
+#| eval: false
+person["email"]   # KeyError: 'email'
+```
+
+The `.get()` method is a safer alternative.
+It returns `None` if the key is absent, or a default value you supply as a second argument.
+
+```{python}
+person.get("name")
+```
+
+```{python}
+person.get("email", "not found")
+```
+
+New entries are added by assigning to a new key, and existing values are updated by assigning to an existing key.
+
+```{python}
+person["email"] = "alice@example.com"   # add a new entry
+person["age"] = 31                      # update an existing value
+person
+```
+
+The `.update()` method adds or updates multiple entries at once.
+
+```{python}
+person.update({"phone": "555-1234", "age": 32})
+person
+```
+
+Three mechanisms remove entries from a dictionary.
+`del` removes the entry at a given key.
+
+```{python}
+person = {"name": "Alice", "age": 30, "city": "Boston"}
+del person["city"]
+person
+```
+
+`.pop()` removes a key and returns its value.
+
+```{python}
+person.pop("age")
+```
+
+`.popitem()` removes and returns the most recently inserted key-value pair.
+Unlike `.pop()`, which requires a key, `.popitem()` takes no argument and always removes the last entry.
+
+```{python}
+person.popitem()
+```
+
+A dictionary exposes three views of its contents through `.keys()`, `.values()`, and `.items()`.
+
+```{python}
+person = {"name": "Alice", "age": 30, "city": "Boston"}
+person.keys()
+```
+
+```{python}
+person.values()
+```
+
+```{python}
+person.items()
+```
+
+These return view objects, not lists.
+A view object does not build all its contents up front.
+It provides a live window into the dictionary, reflecting any changes made after the view was created.
+This is lazy evaluation: the full sequence of keys or values is only materialised when you explicitly ask for it.
+To get an ordinary list, pass the view to `list()`.
+
+```{python}
+list(person.keys())
+```
+
+```{python}
+list(person.values())
+```
+
+```{python}
+list(person.items())
+```
+
+Note that `.items()` produces pairs, each containing a key followed by its value.
+These pairs will be relevant again when we cover iteration.
+
+The `in` and `not in` operators test for membership.
+By default they test keys rather than values, which is a common point of confusion.
+
+```{python}
+#| eval: false
+"name" in person            # True  — tests keys
+"email" in person           # False
+"Alice" in person           # False — "Alice" is a value, not a key
+"Alice" in person.values()  # True
+```
+
+`len` returns the number of key-value pairs.
+
+```{python}
+len(person)
+```
+
+The `|` operator, introduced in Python 3.9, merges two dictionaries into a new one.
+When the same key appears in both, the value from the right-hand operand takes precedence.
+
+```{python}
+defaults = {"color": "blue", "size": "medium"}
+overrides = {"color": "red", "weight": 1.5}
+defaults | overrides
+```
+
+Note the difference between `|` and `.update()`.
+The `|` operator creates a new dictionary and leaves both operands unchanged.
+`.update()` modifies the dictionary it is called on.
+
+`.copy()` creates a shallow copy of a dictionary, independent of the original.
+
+```{python}
+backup = person.copy()
+backup["name"] = "Bob"
+person   # unchanged
+```
+
+Dictionary values can be any Python objects, including other dictionaries, lists, or a mix of types.
+
+```{python}
+students = {
+    "alice": {"age": 20, "grades": [85, 90, 88]},
+    "bob":   {"age": 22, "grades": [78, 82, 80]}
+}
+```
+
+```{python}
+students["alice"]["grades"]
+```
+
+```{python}
+students["bob"]["age"]
+```
+
+This example uses dictionaries as values, but values could equally well be lists, or the outer structure could itself be a list of dictionaries.
+The nesting follows whatever shape fits the data.
+
+## Tuples
+
+A tuple is an ordered sequence of objects, like a list, but immutable.
+Once created, its elements cannot be added, removed, or replaced.
+
+```{python}
+point = (3, 4, 5)
+rgb = (255, 128, 0)
+single = (42,)
+empty = ()
+```
+
+The trailing comma in `single = (42,)` is required.
+Without it, Python interprets `(42)` as an integer in parentheses, not a one-element tuple.
+
+Indexing and slicing work exactly as with lists.
+
+```{python}
+#| eval: false
+point[0]    # first element
+point[-1]   # last element
+point[1:]   # from position 1 to the end
+```
+
+The obvious question is why use a tuple rather than a list.
+The short answer is that a tuple signals intent: these values form a fixed record and should not change.
+A three-dimensional coordinate `(3, 4, 5)` is a different kind of thing from a list of numbers you might later append to or rearrange.
+Immutability also has a practical consequence: tuples can be used as dictionary keys, whereas lists cannot.
+
+One of the most useful things about tuples is unpacking: assigning their elements to separate names in a single statement.
+
+```{python}
+x, y = (3, 4)
+x, y, z = (1, 2, 3)
+```
+
+The number of names on the left must match the number of elements on the right.
+
+A starred name in the unpacking collects any remaining elements into a list.
+
+```{python}
+first, *rest = (1, 2, 3, 4, 5)
+first
+```
+
+```{python}
+rest
+```
+
+`first` receives the first element; `*rest` receives everything that follows, gathered into a list.
+
+The `+` and `*` operators work with tuples in the same way as with lists.
+
+```{python}
+(1, 2) + (3, 4)
+```
+
+```{python}
+(0,) * 4
+```
+
+`len` and `in` apply to tuples as they do to any sequence.
+
+```{python}
+#| eval: false
+len(point)     # 3
+5 in point     # True
+10 in point    # False
+```
+
+The `count` and `index` methods behave identically to their list counterparts.
+
+```{python}
+t = (1, 2, 2, 3, 3, 3)
+t.count(3)
+```
+
+```{python}
+t.index(2)
+```
+
+## Sets
+
+A set is an unordered collection of unique objects.
+It corresponds directly to the mathematical notion of a set.
+Because a set has no ordering, it cannot be indexed.
+Its main strengths are eliminating duplicates and performing the standard set operations efficiently.
+
+Sets are created using curly braces with elements separated by commas.
+
+```{python}
+fruits = {"apple", "banana", "cherry", "apple"}
+fruits
+```
+
+Duplicate values are silently discarded.
+Note that `{}` on its own creates an empty dictionary, not an empty set.
+To create an empty set, use `set()`.
+
+```{python}
+empty = set()
+```
+
+The set operations mirror their mathematical equivalents.
+The examples below use two sets of different sizes.
+
+```{python}
+a = {1, 2, 3, 4, 5}
+b = {4, 5, 6}
+```
+
+```{python}
+a | b    # union: all elements in either set
+```
+
+```{python}
+a & b    # intersection: elements in both sets
+```
+
+```{python}
+a - b    # difference: elements in a but not in b
+```
+
+```{python}
+b - a    # difference: elements in b but not in a
+```
+
+```{python}
+a ^ b    # symmetric difference: in one set but not both
+```
+
+The subset, superset, and disjoint relations are available as methods.
+
+```{python}
+{1, 2}.issubset({1, 2, 3, 4})
+```
+
+```{python}
+{1, 2, 3, 4}.issuperset({1, 2})
+```
+
+```{python}
+{1, 2}.isdisjoint({3, 4})   # True: no elements in common
+```
+
+```{python}
+{1, 2}.isdisjoint({2, 3})   # False: 2 appears in both
+```
+
+The `in` operator tests for membership.
+Membership testing on sets is faster than on lists, particularly for large collections.
+
+```{python}
+#| eval: false
+"apple" in fruits    # True
+"grape" in fruits    # False
+```
+
+`len` returns the number of elements.
+
+```{python}
+len(a)
+```
+
+`add` adds a single element and `update` adds all elements from another iterable.
+
+```{python}
+fruits.add("date")
+fruits
+```
+
+```{python}
+fruits.update(["elderberry", "fig"])
+fruits
+```
+
+`remove` removes a specified element and raises a `KeyError` if the element is not present.
+`discard` does the same but raises no error when the element is absent.
+
+```{python}
+fruits.remove("apple")
+fruits
+```
+
+```{python}
+fruits.discard("grape")   # no error: "grape" is not in fruits
+fruits
+```
+
+`pop` removes and returns an arbitrary element.
+Because sets are unordered, there is no way to control which element is removed.
+
+```{python}
+fruits.pop()
+```
+
+A common use of sets is deduplication: converting a list to a set removes all repeated values.
+
+```{python}
+data = [1, 2, 2, 3, 3, 3, 4]
+list(set(data))
+```
+
+Note that the resulting order may differ from the original, since sets carry no ordering.
+
+## Type Conversion
+
+The conversion functions introduced in the previous session for scalar types extend naturally to collection types.
+`list()`, `tuple()`, `set()`, and `dict()` convert between collection types using the same principle: pass an object of one type and receive a new object of the target type.
+
+```{python}
+#| eval: false
+list((1, 2, 3))          # tuple to list: [1, 2, 3]
+list({1, 2, 3})          # set to list: order may vary
+list("hello")            # string to list: ['h', 'e', 'l', 'l', 'o']
+```
+
+```{python}
+#| eval: false
+tuple([1, 2, 3])         # list to tuple: (1, 2, 3)
+tuple("hello")           # string to tuple: ('h', 'e', 'l', 'l', 'o')
+```
+
+```{python}
+#| eval: false
+set([1, 2, 2, 3, 3, 3])  # list to set: {1, 2, 3} — duplicates removed
+set("hello")             # string to set: unique characters only
+```
+
+`dict()` can convert a list of two-element sequences into a dictionary, treating the first element of each pair as the key and the second as the value.
+
+```{python}
+dict([("name", "Alice"), ("age", 30), ("city", "Boston")])
+```
+
+The scalar conversion functions also work on collection elements.
+One general rule worth knowing is that empty collections evaluate to `False` in a Boolean context, and non-empty collections evaluate to `True`.
+
+```{python}
+#| eval: false
+bool([])      # False — empty list
+bool([1])     # True  — non-empty list
+bool({})      # False — empty dict
+bool(set())   # False — empty set
+bool("")      # False — empty string
+```
+
+This applies uniformly to all collection types and is used extensively in Python code.

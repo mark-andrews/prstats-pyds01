@@ -1,0 +1,348 @@
+---
+title: "Day Two, Session Three"
+subtitle: "Visualization and Statistical Modelling"
+author: "Mark Andrews"
+date: today
+date-format: "D MMMM, YYYY"
+format:
+  html:
+    css: styles.css
+abstract: |
+  This session covers data visualization and statistical modelling in Python.
+  We begin with Matplotlib, the foundational plotting library, covering the pyplot interface, common plot types, and the object-oriented API for multi-panel figures.
+  We then introduce Seaborn, which builds on Matplotlib to produce statistical graphics from tidy data with minimal code.
+  The third topic is plotnine, a Python implementation of the grammar of graphics that closely mirrors R's ggplot2.
+  The session closes with statistical modelling using statsmodels, covering linear regression, logistic regression, and linear mixed-effects models via the formula API, together with a brief survey of the broader Python statistical modelling ecosystem.
+---
+
+```{python}
+#| include: false
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "last_expr"
+```
+
+## Matplotlib
+
+Matplotlib is the foundational plotting library for Python.
+Most other visualization libraries build on it or interact with it.
+The pyplot interface provides a collection of functions that operate on the current figure and axes, following a style similar to MATLAB.
+
+In Jupyter — and in Quarto, which runs the same kernel — figures are captured and displayed automatically at the end of each cell.
+`plt.show()` is therefore not needed and can be omitted throughout.
+In a standalone Python script there is no display infrastructure, so `plt.show()` would be required there to open the figure window.
+One small housekeeping point: matplotlib functions return objects, and without `plt.show()` the text representation of those objects (something like `[<matplotlib.lines.Line2D object at 0x7f...>]`) would print above the figure.
+A trailing semicolon on the last call in a cell suppresses this.
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+x = np.linspace(0, 2 * np.pi, 100)
+plt.plot(x, np.sin(x))
+plt.xlabel('x')
+plt.ylabel('sin(x)')
+plt.title('Sine wave');
+```
+
+Multiple calls to `plot` add lines to the same axes.
+Labels passed via the `label` argument are collected into a legend with `plt.legend()`.
+
+```{python}
+plt.plot(x, np.sin(x), label='sin')
+plt.plot(x, np.cos(x), label='cos', linestyle='--')
+plt.legend();
+```
+
+`plt.scatter` draws a scatter plot.
+The `alpha` argument controls transparency and is useful when points overlap.
+
+```{python}
+rng = np.random.default_rng(42)
+xr = rng.standard_normal(80)
+yr = xr + rng.standard_normal(80) * 0.6
+plt.scatter(xr, yr, alpha=0.5);
+```
+
+Other standard plot types follow the same call pattern.
+
+```{python}
+#| eval: true
+categories = ['A', 'B', 'C', 'D']
+values     = [23, 45, 56, 32]
+
+plt.bar(categories, values)          # vertical bars
+```
+
+```{python}
+#| eval: true
+plt.barh(categories, values)         # horizontal bars
+```
+
+
+```{python}
+#| eval: true
+plt.hist(rng.standard_normal(500), bins=30);   # histogram
+```
+
+
+```{python}
+#| eval: true
+plt.boxplot([rng.standard_normal(100) + i for i in range(4)]);
+```
+
+
+For multi-panel figures, the object-oriented API is cleaner than repeated pyplot calls.
+`plt.subplots` returns a figure and an array of axes objects; each axis is then configured independently.
+
+```{python}
+fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+
+axes[0].plot(x, np.sin(x))
+axes[0].set_title('Sine')
+axes[0].set_xlabel('x')
+
+axes[1].scatter(xr, yr, alpha=0.5)
+axes[1].set_title('Scatter')
+
+plt.tight_layout();
+```
+
+The method names on an axis object mirror the pyplot functions, with `set_` prefixes replacing standalone functions like `xlabel` and `title`.
+`plt.tight_layout()` adjusts spacing so that labels and titles do not overlap.
+
+## Seaborn
+
+Seaborn wraps Matplotlib with functions designed to work directly with Pandas DataFrames.
+Functions accept a `data` argument and column names as strings, so there is no need to extract arrays manually.
+Seaborn uses the `tips` dataset, which ships with the library, throughout this section.
+
+```{python}
+import seaborn as sns
+tips = sns.load_dataset('tips')
+tips.head()
+```
+
+`histplot` draws a histogram, optionally overlaid with a kernel density estimate.
+The `hue` argument splits the distribution by a categorical variable.
+
+```{python}
+sns.histplot(data=tips, x='total_bill', kde=True);
+```
+
+```{python}
+sns.histplot(data=tips, x='total_bill', hue='time');
+```
+
+`scatterplot` maps two continuous variables to position, with optional mappings to colour, style, and size.
+
+```{python}
+sns.scatterplot(data=tips, x='total_bill', y='tip', hue='time');
+```
+
+`regplot` adds a linear regression line with a confidence band to a scatter plot.
+
+```{python}
+sns.regplot(data=tips, x='total_bill', y='tip');
+```
+
+`boxplot` and `violinplot` summarise the distribution of a continuous variable across levels of a categorical one.
+
+```{python}
+sns.boxplot(data=tips, x='day', y='total_bill', hue='time');
+```
+
+```{python}
+#| eval: false
+sns.violinplot(data=tips, x='day', y='total_bill')
+sns.countplot(data=tips, x='day', hue='time')
+sns.barplot(data=tips, x='day', y='total_bill')
+```
+
+`lmplot` combines a scatter plot and regression line and supports faceting by a third variable into separate panels.
+
+```{python}
+sns.lmplot(data=tips, x='total_bill', y='tip', col='time');
+```
+
+## plotnine
+
+plotnine is a Python implementation of the grammar of graphics, closely modelling R's ggplot2.
+A plot is built by adding layers with `+`: an initial `ggplot` call defines the data and aesthetic mappings, geometric layers specify how variables are drawn, and further components control scales, labels, and themes.
+
+```{python}
+from plotnine import ggplot, aes, geom_point, geom_smooth
+from plotnine import geom_histogram, geom_boxplot, geom_bar
+from plotnine import facet_wrap, facet_grid, labs, theme_minimal
+```
+
+```{python}
+(ggplot(tips, aes(x='total_bill', y='tip', color='time'))
+ + geom_point(alpha=0.6))
+```
+
+`geom_smooth` adds a fitted line.
+The `method='lm'` argument requests a linear fit with a confidence band.
+
+```{python}
+(ggplot(tips, aes(x='total_bill', y='tip'))
+ + geom_point(alpha=0.4)
+ + geom_smooth(method='lm'))
+```
+
+`facet_wrap` creates a separate panel for each level of a variable.
+
+```{python}
+(ggplot(tips, aes(x='total_bill', y='tip'))
+ + geom_point(alpha=0.4)
+ + facet_wrap('~day'))
+```
+
+`facet_grid` arranges panels in a two-way grid defined by two variables.
+
+```{python}
+#| eval: false
+(ggplot(tips, aes(x='total_bill', y='tip'))
+ + geom_point(alpha=0.4)
+ + facet_grid('time~day'))
+```
+
+Labels and themes are added in the same way.
+
+```{python}
+#| eval: false
+(ggplot(tips, aes(x='total_bill', y='tip', color='time'))
+ + geom_point(alpha=0.6)
+ + labs(title='Tips vs Total Bill', x='Total Bill ($)', y='Tip ($)')
+ + theme_minimal())
+```
+
+Other geometric layers follow the same pattern.
+
+```{python}
+#| eval: false
+ggplot(tips, aes(x='total_bill'))              + geom_histogram(bins=20)
+ggplot(tips, aes(x='day', y='total_bill'))     + geom_boxplot()
+ggplot(tips, aes(x='day'))                     + geom_bar()
+```
+
+For users coming from R, plotnine's syntax is nearly identical to ggplot2, with column names passed as strings rather than bare names.
+
+## Statistical Modelling
+
+statsmodels provides a formula interface for statistical models that closely resembles R's model syntax.
+`smf.ols` fits ordinary least squares regression; the first argument is a formula string in which `~` separates the response from the predictors.
+
+```{python}
+import statsmodels.formula.api as smf
+
+weight_df = pd.read_csv(
+    "https://raw.githubusercontent.com/mark-andrews/pysc01/master/data/weight.csv"
+)
+weight_df.head()
+```
+
+```{python}
+results = smf.ols('weight ~ height', data=weight_df).fit()
+print(results.summary())
+```
+
+The fitted object exposes estimated coefficients, standard errors, p-values, and confidence intervals as attributes.
+
+```{python}
+results.params
+```
+
+```{python}
+results.conf_int()
+```
+
+`predict` returns fitted values for the original data or for new data supplied as a DataFrame.
+
+```{python}
+results.predict(pd.DataFrame({'height': [160, 170, 180]}))
+```
+
+Multiple predictors are added with `+`.
+Categorical columns are expanded into indicator variables automatically.
+Interactions use `:`, and `*` includes both main effects and the interaction.
+
+```{python}
+#| eval: false
+smf.ols('weight ~ height + age + gender', data=weight_df).fit()
+smf.ols('weight ~ height * age', data=weight_df).fit()
+```
+
+Logistic regression is fitted with `smf.logit` and follows the same interface.
+
+```{python}
+weight_df['heavy'] = (weight_df['weight'] > 90).astype(int)
+results_logit = smf.logit('heavy ~ height + age + gender',
+                           data=weight_df).fit()
+print(results_logit.summary())
+```
+
+Linear mixed-effects models are fitted with `smf.mixedlm`.
+The `groups` argument identifies the random-effects grouping variable, and the formula can include random slopes.
+
+```{python}
+sleepstudy = pd.read_csv('data/sleepstudy.csv')
+sleepstudy.head()
+```
+
+```{python}
+results_lme = smf.mixedlm('Reaction ~ Days', sleepstudy,
+                            groups=sleepstudy['Subject']).fit()
+print(results_lme.summary())
+```
+
+```{python}
+#| eval: false
+# random intercept and random slope for Days
+smf.mixedlm('Reaction ~ Days', sleepstudy,
+             groups=sleepstudy['Subject'],
+             re_formula='~Days').fit()
+```
+
+## Python for Statistical Analysis
+
+An honest answer to "should I do my statistical analysis in Python?" is: probably not, unless you have a specific reason to.
+R has a deeper and more mature ecosystem for statistical modelling.
+Packages like lme4, brms, mgcv, and survival cover a range of models that either have no Python equivalent or have equivalents that are less well-developed and less widely used.
+If you are working in Positron or VS Code, switching between Python and R within the same project is straightforward, and data can be shared between them using the Arrow/Feather format (`pd.DataFrame.to_feather`, `arrow::read_feather` in R) with no conversion overhead.
+
+That said, several Python packages do cover a reasonable breadth of statistical analysis.
+
+statsmodels covers standard frequentist regression models: OLS, GLMs, mixed effects, time series (ARIMA, VAR), and survival analysis.
+
+PyMC is the main Bayesian modelling library.
+Its syntax is similar in spirit to Stan or brms: you define priors and a likelihood, and PyMC handles sampling via NUTS or other MCMC algorithms.
+
+```{python}
+#| eval: false
+import pymc as pm
+
+with pm.Model() as model:
+    alpha = pm.Normal('alpha', mu=0, sigma=10)
+    beta  = pm.Normal('beta',  mu=0, sigma=10)
+    sigma = pm.HalfNormal('sigma', sigma=1)
+    mu    = alpha + beta * x
+    y_obs = pm.Normal('y_obs', mu=mu, sigma=sigma, observed=y)
+    trace = pm.sample()
+```
+
+pingouin provides a collection of frequentist tests — t-tests, ANOVA, correlation, chi-square — with a clean DataFrame-based interface and effect sizes included by default.
+
+```{python}
+#| eval: false
+import pingouin as pg
+
+pg.ttest(x=group_a, y=group_b)
+pg.anova(data=df, dv='score', between='group')
+pg.rm_anova(data=df, dv='score', within='time', subject='id')
+pg.corr(x=df['x'], y=df['y'])
+```
+
+lifelines covers survival analysis: Kaplan-Meier estimates, log-rank tests, and Cox proportional hazards regression.
+
+scikit-learn is the standard library for machine learning rather than statistical inference: it covers cross-validation, regularised regression, classification, clustering, and preprocessing, but it does not produce p-values or confidence intervals.

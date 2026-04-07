@@ -1,0 +1,345 @@
+---
+title: "Day Two, Session Two"
+subtitle: "Pandas"
+author: "Mark Andrews"
+date: today
+date-format: "D MMMM, YYYY"
+format:
+  html:
+    css: styles.css
+abstract: |
+  This session introduces Pandas, the primary library for data manipulation in Python.
+  We begin with the two fundamental data structures, Series and DataFrame, and cover how to load data from CSV files.
+  We then cover the core operations on DataFrames: selecting columns with square brackets, loc, and iloc; renaming columns; filtering rows with boolean conditions and query; adding and transforming columns with assign; sorting; and the split-apply-combine pattern using groupby and aggregation.
+---
+
+```{python}
+#| include: false
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "last_expr"
+```
+
+## Series and DataFrames
+
+Pandas provides two data structures built on top of NumPy arrays: Series for one-dimensional labelled data and DataFrame for two-dimensional tabular data.
+A Series is an array paired with an index.
+
+```{python}
+import pandas as pd
+import numpy as np
+
+s = pd.Series([10, 20, 30], index=['a', 'b', 'c'])
+s
+```
+
+Arithmetic operations apply element-wise, just as with NumPy arrays.
+
+```{python}
+s * 2
+```
+
+A DataFrame is a table of columns, each a Series sharing a common index.
+The quickest way to create a small one by hand is from a dictionary of lists.
+
+```{python}
+df = pd.DataFrame({'x': [1, 2, 3], 'y': [4, 5, 6]})
+df
+```
+
+In practice, data almost always comes from a file.
+`pd.read_csv` reads a CSV into a DataFrame and is the starting point for most real analyses.
+It accepts either a file path or a URL, which is convenient for publicly hosted data.
+
+```{python}
+affairs = pd.read_csv('data/affairs.csv')
+affairs.head()
+```
+
+```{python}
+#| eval: false
+# a URL works just as well as a file path
+affairs = pd.read_csv(
+    'https://raw.githubusercontent.com/mark-andrews/pysc01/master/data/affairs.csv'
+)
+```
+
+A few attributes and methods give an immediate overview.
+
+```{python}
+affairs.shape    # (rows, columns)
+```
+
+```{python}
+affairs.dtypes
+```
+
+```{python}
+affairs.info()        # column types and non-null counts
+```
+
+```{python}
+affairs.describe()    # summary statistics for numeric columns
+```
+
+## Selecting Columns
+
+A single column is selected with square brackets, returning a Series.
+A list of names returns a DataFrame with only those columns.
+
+```{python}
+affairs['gender']
+```
+
+```{python}
+affairs[['gender', 'age', 'affairs']]
+```
+
+`drop` removes named columns and is useful when you want most columns except a few.
+
+```{python}
+affairs.drop(columns=['occupation'])
+```
+
+The `filter` method selects columns by name pattern.
+It operates on column names, not on the values in the data — it has nothing to do with filtering rows.
+`like` matches columns whose names contain a given substring; `regex` matches against a regular expression.
+
+```{python}
+affairs.filter(like='year')      # columns whose names contain 'year'
+```
+
+```{python}
+affairs.filter(regex='^a')       # columns whose names start with 'a'
+```
+
+```{python}
+#| eval: false
+affairs.filter(regex='ness$')    # columns whose names end with 'ness'
+affairs.filter(regex='age|year') # columns whose names contain 'age' or 'year'
+```
+
+`loc` and `iloc` both select rows and columns simultaneously, but they are also useful for column selection alone.
+`loc` uses labels: passing a slice of column names selects every column from the first label to the second, inclusive.
+
+```{python}
+affairs.loc[:, 'age':'education']    # all rows, columns from 'age' to 'education'
+```
+
+```{python}
+affairs.loc[:, ['gender', 'age', 'rating']]    # all rows, named columns
+```
+
+`iloc` uses integer positions.
+The column index counts from zero, and slices are exclusive at the end, following the standard Python convention.
+
+```{python}
+affairs.iloc[:, 0:3]    # all rows, first three columns
+```
+
+```{python}
+affairs.iloc[:, [0, 2, 8]]    # all rows, columns at positions 0, 2, and 8
+```
+
+None of these operations modify the original DataFrame; they all return a new one.
+
+## Renaming Columns
+
+`rename` takes a dictionary mapping old names to new names.
+Only the names that appear in the dictionary are changed.
+
+```{python}
+affairs.rename(columns={'gender': 'sex', 'rating': 'happiness'})
+```
+
+To replace all column names at once, assign a new list directly to `.columns`.
+
+```{python}
+#| eval: false
+affairs.columns = ['affairs', 'sex', 'age', 'yearsmarried',
+                   'children', 'religiousness', 'education',
+                   'occupation', 'rating']
+```
+
+## Filtering Rows
+
+A comparison applied to a column returns a Boolean Series.
+That Series indexes the DataFrame to keep only the rows where the condition is true.
+
+```{python}
+affairs[affairs['gender'] == 'male']
+```
+
+```{python}
+affairs[affairs['age'] > 35]
+```
+
+Compound conditions use `&` for and, `|` for or, and `~` for not, with each sub-condition in parentheses.
+
+```{python}
+affairs[(affairs['gender'] == 'male') & (affairs['age'] > 35)]
+```
+
+```{python}
+affairs[(affairs['affairs'] == 0) | (affairs['rating'] >= 4)]
+```
+
+The `query` method accepts a condition as a string, which is often easier to read for complex expressions.
+
+```{python}
+affairs.query('age > 35 and gender == "male"')
+```
+
+A threshold stored in a variable can be referenced inside a query string with `@`.
+
+```{python}
+min_age = 30
+affairs.query('age > @min_age and rating >= 4')
+```
+
+`loc` and `iloc` select rows and columns together and are often the most direct way to combine a row filter with column selection.
+`loc` takes a row condition as the first argument and a column selector as the second.
+
+```{python}
+affairs.loc[affairs['age'] > 35, ['gender', 'age', 'affairs']]
+```
+
+```{python}
+affairs.loc[affairs['gender'] == 'male', 'age':'education']
+```
+
+`iloc` selects by integer position for both rows and columns.
+
+```{python}
+affairs.iloc[0:5, 0:3]    # first five rows, first three columns
+```
+
+```{python}
+#| eval: false
+affairs.iloc[10:20, [0, 2, 5]]    # rows 10 to 19, columns at positions 0, 2, 5
+affairs.iloc[:, 1]                 # all rows, second column (returns a Series)
+```
+
+## Adding and Transforming Columns
+
+`assign` adds or replaces columns and returns a new DataFrame.
+The original is never modified.
+
+```{python}
+affairs.assign(cheater=affairs['affairs'] > 0)
+```
+
+A lambda that receives the whole DataFrame lets you refer to columns, including ones created in the same `assign` call.
+
+```{python}
+affairs.assign(
+    cheater=lambda df: df['affairs'] > 0,
+    male_cheater=lambda df: (df['gender'] == 'male') & (df['affairs'] > 0)
+)[['gender', 'affairs', 'cheater', 'male_cheater']]
+```
+
+`apply` passes each element of a column through a function and returns a Series.
+
+```{python}
+affairs['age'].apply(lambda x: 'young' if x < 30 else 'older')
+```
+
+## Sorting
+
+`sort_values` reorders rows by one or more columns and returns a new DataFrame.
+
+```{python}
+affairs.sort_values('age')
+```
+
+```{python}
+affairs.sort_values('age', ascending=False)
+```
+
+```{python}
+#| eval: false
+affairs.sort_values(['gender', 'age'])                      # sort by two columns
+affairs.sort_values(['gender', 'age'], ascending=[True, False])  # mixed order
+```
+
+## Groupby and Aggregation
+
+`groupby` splits the DataFrame into groups by the values of one or more columns.
+An aggregation function applied to the result is computed separately within each group and the results are combined.
+This is the split-apply-combine pattern.
+
+```{python}
+affairs.groupby('gender')['affairs'].mean()
+```
+
+```{python}
+affairs.groupby('children')['affairs'].mean()
+```
+
+`agg` applies multiple aggregation functions at once.
+
+```{python}
+affairs.groupby('gender')['affairs'].agg(['mean', 'std', 'count'])
+```
+
+Grouping by two columns produces a result indexed by both.
+
+```{python}
+affairs.groupby(['gender', 'children'])[['age', 'affairs']].mean()
+```
+
+`reset_index` converts the group labels back into ordinary columns, which is useful for further processing or plotting.
+
+```{python}
+(affairs
+ .groupby(['gender', 'children'])[['age', 'affairs']]
+ .mean()
+ .reset_index())
+```
+
+`describe` gives a compact numeric summary of selected columns.
+
+```{python}
+affairs[['age', 'affairs', 'rating']].describe()
+```
+
+## Reshaping: Wide and Long
+
+Data is often stored in wide format, with one row per subject and one column per measurement occasion or variable.
+Analysis and plotting frequently require long format, where each row is one observation.
+`melt` converts from wide to long; `pivot` converts from long back to wide.
+
+Start with a small wide DataFrame: three students, each with a score in three subjects.
+
+```{python}
+wide = pd.DataFrame({
+    'name':    ['Alice', 'Bob', 'Charlie'],
+    'maths':   [90, 75, 85],
+    'english': [85, 80, 70],
+    'science': [88, 92, 78]
+})
+wide
+```
+
+`melt` takes the `id_vars` argument — the columns that identify each row and stay fixed — and folds every other column into two new columns: one for the variable name and one for the value.
+
+```{python}
+long = wide.melt(id_vars='name', var_name='subject', value_name='score')
+long
+```
+
+`pivot` reverses the operation.
+`index` specifies the column that becomes the row labels, `columns` specifies the column whose values become the new column names, and `values` specifies the column that fills the cells.
+
+```{python}
+long.pivot(index='name', columns='subject', values='score')
+```
+
+The result has the subject names as a column index label (`subject`).
+`reset_index` and `rename_axis` clean this up if needed.
+
+```{python}
+(long
+ .pivot(index='name', columns='subject', values='score')
+ .reset_index()
+ .rename_axis(columns=None))
+```

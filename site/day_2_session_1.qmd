@@ -1,0 +1,634 @@
+---
+title: "Day Two, Session One"
+subtitle: "Packages and NumPy"
+author: "Mark Andrews"
+date: today
+date-format: "D MMMM, YYYY"
+format:
+  html:
+    css: styles.css
+abstract: |
+  This session begins with Python's import system, covering how to use modules from the standard library and third-party packages.
+  We then introduce NumPy, its ndarray data structure, and how arrays are indexed and sliced.
+  We cover element-wise operations, universal functions, and aggregations, including the distinction between functions and methods and how missing values are handled.
+  Broadcasting and reshaping follow, then matrix operations with attention to the differences between the dot product, inner product, and matrix multiplication.
+  The session closes with a tour of NumPy's major submodules and a demonstration of NumPy's performance advantage over native Python.
+---
+
+```{python}
+#| include: false
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "last_expr"
+```
+
+## Packages and Imports
+
+In the first session of day one we noted that Python has three layers: the language itself, the standard library, and the broader ecosystem of third-party packages.
+The standard library ships with every Python installation and covers a wide range of tasks.
+Third-party packages such as NumPy, Pandas, and Matplotlib must be installed separately but follow the same import mechanism.
+
+The `import` statement loads a module and binds its name in the current namespace.
+
+```{python}
+import math
+math.sqrt(16)
+```
+
+```{python}
+math.log(10)
+```
+
+The prefix `math.` is required because `sqrt` and `log` live in the `math` namespace, not the global one.
+
+The `from ... import` form brings specific names directly into the global namespace so they can be used without a prefix.
+
+```{python}
+from math import sqrt, log
+sqrt(16)
+```
+
+The most common pattern for scientific Python libraries is to import them under a standard alias.
+These aliases are conventions the community has settled on and you will see them universally.
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+```
+
+The alias keeps code concise while making the origin of each function clear.
+`np.array(...)` tells you immediately that `array` comes from NumPy.
+
+One form to avoid is `from module import *`, which imports every name from a module without a prefix.
+
+```{python}
+#| eval: false
+from numpy import *   # avoid: floods the namespace, hides origins
+```
+
+This makes it impossible to tell where a name came from and risks silently overwriting names from earlier imports.
+
+Python's standard library provides many useful modules that require no installation.
+
+```{python}
+#| eval: false
+import os          # file paths, directory operations
+import sys         # Python version, platform information
+import json        # reading and writing JSON data
+import datetime    # dates and times
+import collections # specialised containers: Counter, defaultdict, deque
+import re          # regular expressions
+```
+
+## NumPy Arrays
+
+NumPy is the foundational library for numerical computing in Python.
+Its central object is the `ndarray`: a multidimensional array in which every element has the same data type.
+Unlike Python lists, NumPy arrays are stored as contiguous blocks of memory and operations on them are executed in compiled C code.
+This makes them both more memory-efficient and dramatically faster for numerical work.
+
+The most direct way to create an array is to pass a Python list to `np.array`.
+
+```{python}
+a = np.array([2, 3, 5, 7, 11])
+a
+```
+
+```{python}
+b = np.array([[1, 2, 3],
+              [4, 5, 6]])
+b
+```
+
+`a` is one-dimensional with five elements.
+`b` is two-dimensional with two rows and three columns.
+
+NumPy provides functions for creating arrays of standard forms without constructing a list first.
+
+```{python}
+np.arange(10)          # integers 0 to 9
+```
+
+```{python}
+np.linspace(0, 1, 5)   # 5 evenly spaced values from 0 to 1
+```
+
+```{python}
+#| eval: false
+np.zeros(5)           # five zeros
+np.ones((3, 4))       # 3x4 array of ones
+np.arange(1, 11)      # integers 1 through 10
+np.eye(4)             # 4x4 identity matrix
+```
+
+Three attributes describe the structure of an array.
+
+```{python}
+a.ndim    # number of dimensions
+```
+
+```{python}
+a.shape   # shape as a tuple: (5,) for a 1D array of length 5
+```
+
+```{python}
+a.dtype   # data type of the elements
+```
+
+```{python}
+b.shape   # (2, 3): two rows, three columns
+```
+
+Because all elements share a single type, mixing integers and floats in the input causes NumPy to promote everything to float.
+
+```{python}
+np.array([1, 2.0, 3]).dtype
+```
+
+You can also request a specific data type explicitly.
+
+```{python}
+#| eval: false
+np.array([1, 2, 3], dtype=np.float64)
+np.array([1.7, 2.3, 3.9], dtype=np.int32)   # truncates toward zero
+```
+
+## Indexing
+
+One-dimensional arrays are indexed exactly like lists, using zero-based positions and slice notation.
+
+```{python}
+a = np.array([10, 20, 30, 40, 50])
+a[0]
+```
+
+```{python}
+a[-1]
+```
+
+```{python}
+a[1:4]   # elements at positions 1, 2, 3
+```
+
+```{python}
+a[::2]   # every second element
+```
+
+Two-dimensional arrays are indexed with two values separated by a comma, the first for the row and the second for the column.
+
+```{python}
+b = np.array([[1, 2, 3],
+              [4, 5, 6],
+              [7, 8, 9]])
+b[0, 0]      # first row, first column
+```
+
+```{python}
+b[1, 2]      # second row, third column
+```
+
+`b[0, 0]` and `b[0][0]` return the same element.
+The single-bracket form `b[0, 0]` is preferred because it is a single operation on the array, whereas `b[0][0]` first extracts a row as a temporary array and then indexes into that.
+The difference becomes significant with slices: `b[0:2, 0:2]` selects a 2×2 submatrix in one step, while chained brackets do not behave the same way for non-integer selectors.
+
+```{python}
+b[0]         # entire first row
+```
+
+```{python}
+b[:, 0]      # entire first column
+```
+
+```{python}
+b[0:2, 1:3]  # first two rows, columns 1 and 2
+```
+
+Boolean indexing is one of NumPy's most important features.
+A comparison applied to an array returns a Boolean array of the same shape.
+That Boolean array can then index the original to extract only the elements where the condition is true.
+
+```{python}
+a = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+a > 5
+```
+
+```{python}
+a[a > 5]
+```
+
+```{python}
+a[a % 2 == 0]   # even elements
+```
+
+Compound conditions use `&` for and, `|` for or, and `~` for not.
+Each sub-condition must be in parentheses.
+
+```{python}
+a[(a > 3) & (a < 8)]
+```
+
+Boolean indexing on a two-dimensional array returns the matching elements as a flat one-dimensional array.
+
+```{python}
+b[b > 5]
+```
+
+## Element-wise Operations
+
+NumPy arithmetic operators apply element-wise: each element is paired with the corresponding element of the other array.
+The two arrays must have the same shape, or shapes that are compatible under the broadcasting rules described in a later section.
+
+```{python}
+a = np.array([1, 2, 3, 4, 5])
+b = np.array([10, 20, 30, 40, 50])
+a + b
+```
+
+```{python}
+a * b
+```
+
+```{python}
+a / b
+```
+
+```{python}
+a ** 2
+```
+
+All the standard arithmetic operators — `+`, `-`, `*`, `/`, `//`, `%`, `**` — work this way.
+Comparison operators also apply element-wise and return a Boolean array.
+
+```{python}
+a > 3
+```
+
+The bitwise operators `&`, `|`, `~`, and `^` apply element-wise to Boolean arrays and are essential for combining conditions when indexing.
+
+```{python}
+p = np.array([True, True, False, False])
+q = np.array([True, False, True, False])
+p & q    # element-wise and
+```
+
+```{python}
+p | q    # element-wise or
+```
+
+```{python}
+~p       # element-wise not
+```
+
+These are not the same as Python's `and`, `or`, and `not` keywords.
+Python's `and` and `or` evaluate two objects as a whole and return one of them unchanged — they are not designed to work on arrays.
+Trying to use `and` between two Boolean arrays raises an error, because NumPy cannot collapse an entire array to a single truth value for Python's `and` to act on.
+The bitwise operators `&` and `|` instead apply the logical operation independently to each pair of elements, which is exactly what is needed for compound indexing conditions.
+
+```{python}
+a[(a > 2) & (a < 5)]    # elements strictly between 2 and 5
+```
+
+## Functions, Methods, and Aggregations
+
+NumPy distinguishes between two kinds of operation: universal functions (ufuncs), which apply a computation element-by-element and return an array of the same shape, and aggregation functions, which reduce an array to a smaller result.
+
+Element-wise ufuncs are standalone functions in the `np` namespace.
+
+```{python}
+np.sqrt(a)
+```
+
+```{python}
+#| eval: false
+np.exp(a)     # e raised to each element
+np.log(a)     # natural logarithm of each element
+np.abs(a)     # absolute value
+np.sin(a)     # sine of each element (radians)
+np.cos(a)     # cosine
+np.floor(a)   # round down to integer
+np.ceil(a)    # round up to integer
+```
+
+These do not have method equivalents on the array object.
+There is no `a.sqrt()`.
+The reason is that ufuncs are general-purpose functions designed to operate on any array-like input and are defined independently of the array class.
+
+Aggregation functions, by contrast, are available both as standalone functions and as methods on the array.
+`np.sum(a)` and `a.sum()` compute exactly the same thing.
+
+```{python}
+np.sum(a)
+```
+
+```{python}
+a.sum()
+```
+
+```{python}
+a.mean()
+```
+
+```{python}
+#| eval: false
+a.sum()      # or np.sum(a)
+a.mean()     # or np.mean(a)
+a.std()      # standard deviation
+a.min()      # minimum value
+a.max()      # maximum value
+a.argmin()   # index of the minimum
+a.argmax()   # index of the maximum
+np.median(a) # median (no method form)
+```
+
+Note that `np.median` is not available as a method — `a.median()` does not exist.
+When in doubt, the function form `np.f(a)` always works; the method form `a.f()` is available for the most commonly used aggregations.
+
+`any` and `all` reduce a Boolean array to a single value.
+`any` returns `True` if at least one element is `True`; `all` returns `True` only if every element is `True`.
+Both exist as standalone functions and as methods.
+
+```{python}
+mask = np.array([False, True, False, True, True])
+mask.any()
+```
+
+```{python}
+mask.all()
+```
+
+```{python}
+(a > 3).any()    # is any element greater than 3?
+```
+
+```{python}
+(a > 0).all()    # are all elements positive?
+```
+
+Like other aggregations, they accept `axis` on two-dimensional arrays.
+
+```{python}
+#| eval: false
+m = np.array([[1, -2, 3], [4, 5, -6]])
+(m > 0).any(axis=1)   # does each row contain at least one positive value?
+(m > 0).all(axis=0)   # is every row positive in each column?
+```
+
+Missing values in NumPy are represented as `np.nan` (not a number), a special floating-point value.
+Any arithmetic involving `nan` propagates the `nan`.
+
+```{python}
+a_with_nan = np.array([1.0, 2.0, np.nan, 4.0, 5.0])
+a_with_nan.sum()    # nan propagates
+```
+
+The `nan`-safe versions of the aggregation functions skip missing values.
+
+```{python}
+np.nansum(a_with_nan)
+```
+
+```{python}
+#| eval: false
+np.nanmean(a_with_nan)
+np.nanstd(a_with_nan)
+np.nanmin(a_with_nan)
+np.nanmax(a_with_nan)
+```
+
+For two-dimensional arrays, aggregations accept an `axis` argument.
+`axis=0` operates down the rows, producing one result per column.
+`axis=1` operates across the columns, producing one result per row.
+Omitting `axis` aggregates over the entire array.
+
+```{python}
+m = np.array([[1, 2, 3],
+              [4, 5, 6],
+              [7, 8, 9]])
+m.sum(axis=0)    # column sums
+```
+
+```{python}
+m.sum(axis=1)    # row sums
+```
+
+```{python}
+m.mean(axis=0)   # column means
+```
+
+```{python}
+m.mean(axis=1)   # row means
+```
+
+```{python}
+m.sum()          # grand total
+```
+
+## Broadcasting
+
+When two arrays in an operation do not have the same shape, NumPy attempts to broadcast them to a common shape before proceeding.
+The simplest case is a scalar: it is broadcast to every element.
+
+```{python}
+a = np.array([1, 2, 3, 4, 5])
+a + 10
+```
+
+```{python}
+a * 3
+```
+
+Broadcasting also applies between arrays of different shapes.
+The general rule is that dimensions are aligned from the right.
+If one array has fewer dimensions, it is treated as if it had extra leading dimensions of size 1.
+A dimension of size 1 is stretched to match the other array's size in that dimension.
+
+The most common case is combining a 2D array with a 1D array: the 1D array is broadcast across every row.
+
+```{python}
+m = np.array([[1, 2, 3],
+              [4, 5, 6],
+              [7, 8, 9]])
+p = np.array([10, 20, 30])
+m + p          # p is broadcast across every row of m
+```
+
+Subtracting column means from each column (centring) is a practical one-liner using broadcasting.
+
+```{python}
+m - m.mean(axis=0)
+```
+
+A column vector (shape `(3, 1)`) and a row vector (shape `(3,)`) broadcast against each other to produce a full matrix.
+
+```{python}
+col = np.array([[1], [2], [3]])   # shape (3, 1)
+row = np.array([10, 20, 30])      # shape (3,)
+col + row                          # shape (3, 3)
+```
+
+## Reshaping
+
+An array can be reshaped to any shape that has the same total number of elements.
+The data is not copied — only the interpretation of its layout changes.
+
+```{python}
+a = np.arange(12)
+a.reshape(3, 4)
+```
+
+```{python}
+a.reshape(4, 3)
+```
+
+Passing `-1` for one dimension tells NumPy to infer it automatically from the total size and the other dimensions.
+
+```{python}
+a.reshape(3, -1)   # 3 rows, infers 4 columns
+```
+
+`flatten` returns a one-dimensional copy of the array.
+`ravel` returns a flattened view where possible, avoiding a copy.
+
+```{python}
+#| eval: false
+m.flatten()    # always returns a copy
+m.ravel()      # returns a view when possible
+```
+
+The transpose swaps rows and columns and is accessed via the `.T` attribute.
+
+```{python}
+b = np.array([[1, 2, 3], [4, 5, 6]])
+b.T
+```
+
+## Matrix Operations
+
+Element-wise multiplication and matrix multiplication are entirely different operations and must not be confused.
+`*` multiplies element-by-element (the Hadamard product); `@` performs matrix multiplication.
+
+```{python}
+A = np.array([[1, 2], [3, 4]])
+B = np.array([[5, 6], [7, 8]])
+A * B    # element-wise
+```
+
+```{python}
+A @ B    # matrix product
+```
+
+For one-dimensional arrays, `@` computes the scalar dot product — the sum of element-wise products.
+
+```{python}
+u = np.array([1, 2, 3])
+v = np.array([4, 5, 6])
+u @ v
+```
+
+`np.dot` behaves the same as `@` for both 1D and 2D arrays.
+
+```{python}
+np.dot(u, v)   # same as u @ v for 1D
+```
+
+`np.inner` agrees with `np.dot` for 1D arrays, but differs for 2D matrices.
+For matrices, `np.inner(A, B)` contracts over the last axis of both arguments, giving `A @ B.T`, whereas `np.dot(A, B)` and `A @ B` contract over the last axis of `A` and the second-to-last of `B`, giving the standard matrix product.
+
+```{python}
+np.inner(u, v)   # same as np.dot for 1D
+```
+
+```{python}
+#| eval: false
+# For 2D matrices these differ:
+np.dot(A, B)      # standard matrix product: A @ B
+np.inner(A, B)    # equivalent to A @ B.T
+```
+
+The outer product of two vectors produces a matrix where element `[i, j]` equals `u[i] * v[j]`.
+
+```{python}
+np.outer(u, v)
+```
+
+## Submodules
+
+NumPy is organised into submodules, each providing a focused set of functions.
+The top-level `np` namespace contains the most commonly used tools; the submodules extend it for specialised tasks.
+
+`np.linalg` provides linear algebra routines.
+
+```{python}
+np.linalg.norm(u)      # Euclidean norm of a vector
+```
+
+```{python}
+#| eval: false
+np.linalg.det(A)                    # determinant
+np.linalg.inv(A)                    # matrix inverse
+np.linalg.eig(A)                    # eigenvalues and eigenvectors
+np.linalg.svd(A)                    # singular value decomposition
+np.linalg.solve(A, b)               # solve A x = b
+np.linalg.lstsq(A, b, rcond=None)   # least-squares solution
+```
+
+`np.random` provides random number generation.
+The modern interface uses a generator object created with `np.random.default_rng`, which allows reproducibility by accepting a seed.
+
+```{python}
+rng = np.random.default_rng(seed=42)
+rng.standard_normal(5)
+```
+
+```{python}
+#| eval: false
+rng.uniform(0, 1, size=10)           # uniform on [0, 1)
+rng.integers(1, 7, size=10)          # random integers from 1 to 6
+rng.choice([10, 20, 30, 40], size=5) # sample from an array
+rng.standard_normal((3, 4))          # 3x4 matrix of standard normals
+```
+
+`np.fft` provides fast Fourier transforms.
+
+```{python}
+#| eval: false
+np.fft.fft(a)       # discrete Fourier transform
+np.fft.ifft(a)      # inverse DFT
+np.fft.fftfreq(n)   # frequencies for a DFT of length n
+```
+
+`np.ma` provides masked arrays, an alternative way to represent and propagate missing values that is more structured than using `np.nan`.
+
+```{python}
+#| eval: true
+import numpy.ma as ma
+a_masked = ma.array([1, 2, np.nan, 4, 5], mask=[0, 0, 1, 0, 0])
+a_masked.sum()   # missing value at position 2 is ignored
+```
+
+## Performance
+
+NumPy's performance advantage over native Python comes from two sources: data is stored in contiguous memory with a fixed type (no Python object overhead per element), and operations are dispatched to compiled C or Fortran routines rather than run through Python's interpreter one element at a time.
+
+The `%timeit` magic in Jupyter measures execution time by running a statement many times and reporting the average.
+
+```{python}
+rng = np.random.default_rng(0)
+arr = rng.standard_normal(1_000_000)
+lst = arr.tolist()
+```
+
+```{python}
+%timeit arr.sum()
+```
+
+```{python}
+%timeit sum(lst)
+```
+
+```{python}
+%timeit sum(x**2 for x in lst)
+```
+
+The numpy operations are typically one to two orders of magnitude faster.
+The gap widens further for operations that chain multiple steps, because intermediate NumPy arrays stay in cache-friendly contiguous memory while Python generator pipelines cannot exploit this.
